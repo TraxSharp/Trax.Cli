@@ -19,8 +19,7 @@ public class CodeRenderer
     /// Sets the models namespace to include as a using directive in generated files.
     /// Call this when the schema has shared model types (non-built-in types or enums).
     /// </summary>
-    public void SetModelsNamespace(string modelsNamespace) =>
-        _modelsNamespace = modelsNamespace;
+    public void SetModelsNamespace(string modelsNamespace) => _modelsNamespace = modelsNamespace;
 
     public string RenderTrainInterface(ApiOperation operation, string projectName)
     {

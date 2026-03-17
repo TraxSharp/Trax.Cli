@@ -317,9 +317,7 @@ public class TraxProjectGeneratorTests
         var content = File.ReadAllText(programPath);
         content
             .Should()
-            .Contain(
-                "typeof(Program).Assembly, typeof(TestProject.Trains.ManifestNames).Assembly"
-            );
+            .Contain("typeof(Program).Assembly, typeof(TestProject.Trains.ManifestNames).Assembly");
         content.Should().Contain("using TestProject.Trains;");
     }
 
