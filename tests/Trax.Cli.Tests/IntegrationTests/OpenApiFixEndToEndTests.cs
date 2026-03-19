@@ -631,7 +631,10 @@ public class OpenApiFixEndToEndTests
         _generator.GenerateTrainsLibrary(schema, _outputDir, "TestProject");
 
         var notesDir = Path.Combine(_outputDir, "Trains", "Notes");
-        var trainFiles = Directory.GetFiles(notesDir, "*Train.cs", SearchOption.AllDirectories);
+        var trainFiles = Directory
+            .GetFiles(notesDir, "*Train.cs", SearchOption.AllDirectories)
+            .Where(f => !Path.GetFileName(f).StartsWith('I'))
+            .ToArray();
         trainFiles.Should().NotBeEmpty();
 
         var content = File.ReadAllText(trainFiles[0]);
