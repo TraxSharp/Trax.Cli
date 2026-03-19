@@ -121,13 +121,10 @@ public class TraxProjectGenerator
                 _renderer.RenderTrainImplementation(operation, projectName)
             );
 
-            if (operation.InputType.Fields.Count > 0)
-            {
-                WriteFile(
-                    Path.Combine(trainDir, $"{operation.InputType.Name}.cs"),
-                    _renderer.RenderInput(operation, projectName)
-                );
-            }
+            WriteFile(
+                Path.Combine(trainDir, $"{operation.InputType.Name}.cs"),
+                _renderer.RenderInput(operation, projectName)
+            );
 
             if (!operation.OutputType.IsBuiltIn && operation.OutputType.Fields.Count > 0)
             {

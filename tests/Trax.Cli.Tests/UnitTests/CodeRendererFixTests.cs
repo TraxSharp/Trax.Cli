@@ -76,10 +76,10 @@ public class CodeRendererFixTests
             IsBuiltIn = true,
         };
 
-    #region RenderJunction_UnitInput
+    #region RenderJunction_EmptyInput
 
     [Test]
-    public void RenderJunction_UnitInput_ContainsLanguageExtUsing()
+    public void RenderJunction_EmptyInput_NoLanguageExtUsing()
     {
         var op = MakeOperation(
             "ListAll",
@@ -91,11 +91,12 @@ public class CodeRendererFixTests
 
         var result = _renderer.RenderJunction(op, "MyApi");
 
-        result.Should().Contain("using LanguageExt;");
+        // Empty input records don't need LanguageExt — they use the record name directly
+        result.Should().NotContain("using LanguageExt;");
     }
 
     [Test]
-    public void RenderJunction_UnitInput_UsesUnitAsInputType()
+    public void RenderJunction_EmptyInput_UsesInputTypeName()
     {
         var op = MakeOperation("ListAll", OperationKind.Query, input: UnitType);
 
@@ -122,7 +123,7 @@ public class CodeRendererFixTests
     }
 
     [Test]
-    public void RenderJunction_BothInputAndOutputUnit_ContainsLanguageExtUsing()
+    public void RenderJunction_EmptyInputAndUnitOutput_ContainsLanguageExtUsing()
     {
         var op = MakeOperation(
             "Ping",
@@ -135,6 +136,7 @@ public class CodeRendererFixTests
 
         var result = _renderer.RenderJunction(op, "MyApi");
 
+        // LanguageExt is included because the output is Unit
         result.Should().Contain("using LanguageExt;");
         result.Should().Contain("Junction<Unit, Unit>");
     }
@@ -151,16 +153,17 @@ public class CodeRendererFixTests
 
     #endregion
 
-    #region RenderTrainInterface_UnitInput
+    #region RenderTrainInterface_EmptyInput
 
     [Test]
-    public void RenderTrainInterface_UnitInput_ContainsLanguageExtUsing()
+    public void RenderTrainInterface_EmptyInput_NoLanguageExtUsing()
     {
         var op = MakeOperation("ListAll", OperationKind.Query, input: UnitType);
 
         var result = _renderer.RenderTrainInterface(op, "MyApi");
 
-        result.Should().Contain("using LanguageExt;");
+        // Empty input records don't need LanguageExt
+        result.Should().NotContain("using LanguageExt;");
     }
 
     [Test]

@@ -355,18 +355,15 @@ public class OpenApiFixEndToEndTests
 
     #endregion
 
-    #region UnitInputJunction
+    #region EmptyInputJunction
 
     [Test]
-    public void GenerateTrainsLibrary_UnitInputOperation_JunctionHasLanguageExtUsing()
+    public void GenerateTrainsLibrary_EmptyInputOperation_JunctionUsesTypedInputName()
     {
-        // Use petstore — listPets has no path parameters, so query params are optional
-        // Let's use the duplicate-names fixture where GET /users has only an optional "page" param
-        // Actually, let's construct it from property-collision: listNotifications has no params
+        // listNotifications has no parameters → generates an empty input record
         var schema = _parser.Parse(FixturePath("property-collision.json"));
         _generator.GenerateTrainsLibrary(schema, _outputDir, "TestProject");
 
-        // listNotifications has no parameters → input is Unit
         var junctionPath = Path.Combine(
             _outputDir,
             "Trains",
@@ -379,12 +376,29 @@ public class OpenApiFixEndToEndTests
         if (File.Exists(junctionPath))
         {
             var content = File.ReadAllText(junctionPath);
-            // If input is Unit, should have using LanguageExt
-            if (content.Contains("Junction<Unit,"))
-            {
-                content.Should().Contain("using LanguageExt;");
-            }
+            // Empty input uses the typed record name, not Unit
+            content.Should().Contain("Junction<ListNotificationsInput,");
+            content.Should().NotContain("using LanguageExt;");
         }
+    }
+
+    [Test]
+    public void GenerateTrainsLibrary_EmptyInputOperation_InputFileGenerated()
+    {
+        var schema = _parser.Parse(FixturePath("property-collision.json"));
+        _generator.GenerateTrainsLibrary(schema, _outputDir, "TestProject");
+
+        var inputPath = Path.Combine(
+            _outputDir,
+            "Trains",
+            "Notifications",
+            "ListNotifications",
+            "ListNotificationsInput.cs"
+        );
+
+        File.Exists(inputPath).Should().BeTrue("empty input records should still generate a file");
+        var content = File.ReadAllText(inputPath);
+        content.Should().Contain("public record ListNotificationsInput;");
     }
 
     #endregion

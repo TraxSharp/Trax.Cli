@@ -34,10 +34,8 @@ public class CodeRenderer
                 TrainName = operation.Name,
                 OutputTypeName = outputName,
                 OutputIsUnit = isUnit,
-                InputTypeName = operation.InputType.Fields.Count > 0
-                    ? operation.InputType.Name
-                    : "Unit",
-                InputIsUnit = operation.InputType.Fields.Count == 0,
+                InputTypeName = operation.InputType.Name,
+                InputIsUnit = false,
                 ModelsUsing = _modelsNamespace,
             }
         );
@@ -55,12 +53,10 @@ public class CodeRenderer
             {
                 Namespace = ns,
                 TrainName = operation.Name,
-                InputTypeName = operation.InputType.Fields.Count > 0
-                    ? operation.InputType.Name
-                    : "Unit",
+                InputTypeName = operation.InputType.Name,
                 OutputTypeName = outputName,
                 OutputIsUnit = isUnit,
-                InputIsUnit = operation.InputType.Fields.Count == 0,
+                InputIsUnit = false,
                 Attribute = attribute,
                 Description = SanitizeDescription(
                     operation.Description ?? $"{operation.Name} operation"
@@ -115,12 +111,10 @@ public class CodeRenderer
             {
                 Namespace = ns,
                 TrainName = operation.Name,
-                InputTypeName = operation.InputType.Fields.Count > 0
-                    ? operation.InputType.Name
-                    : "Unit",
+                InputTypeName = operation.InputType.Name,
                 OutputTypeName = outputName,
                 OutputIsUnit = isUnit,
-                InputIsUnit = operation.InputType.Fields.Count == 0,
+                InputIsUnit = false,
                 HttpMethod = operation.HttpMethod,
                 HttpPath = operation.HttpPath,
                 ModelsUsing = _modelsNamespace,
