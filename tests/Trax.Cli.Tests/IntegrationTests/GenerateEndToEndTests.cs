@@ -15,6 +15,24 @@ public class GenerateEndToEndTests
 {
     private string _outputDir = null!;
 
+    [OneTimeSetUp]
+    public void OneTimeSetUp()
+    {
+        // The trax-hub template ships in Trax.Samples.Templates. CI doesn't always
+        // install it, so skip this fixture rather than fail when it's missing.
+        var psi = new System.Diagnostics.ProcessStartInfo("dotnet", "new list trax-hub")
+        {
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+        };
+        using var p = System.Diagnostics.Process.Start(psi)!;
+        var stdout = p.StandardOutput.ReadToEnd();
+        p.WaitForExit();
+        if (!stdout.Contains("trax-hub"))
+            Assert.Ignore("trax-hub template is not installed (Trax.Samples.Templates).");
+    }
+
     [SetUp]
     public void SetUp()
     {
