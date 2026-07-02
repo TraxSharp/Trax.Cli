@@ -143,7 +143,7 @@
         "dependencies": {
           "GraphQL-Parser": "[9.5.1, )",
           "Microsoft.OpenApi.Readers": "[1.6.28, )",
-          "Scriban": "[6.5.7, )",
+          "Scriban": "[7.2.5, )",
           "System.CommandLine": "[2.0.5, )"
         }
       },
@@ -165,9 +165,9 @@
       },
       "Scriban": {
         "type": "CentralTransitive",
-        "requested": "[6.5.7, )",
-        "resolved": "6.5.7",
-        "contentHash": "jrFpfBrlynBbfJkdWKNfFNS/etNQJ0iuRE47e7FtyCgJuYBL5J42U01tBXsxmqJtW0uRzhzZ1RolZC8RsNxzwQ=="
+        "requested": "[7.2.5, )",
+        "resolved": "7.2.5",
+        "contentHash": "6HDyv0P6PVdx/prWM3Aw0QHAT/DCpkBxOovZ2iPIH4L4ZvJ13JNYJgyUI+xJ5K2agXreYTBe23AL5ZQNTqJQvA=="
       },
       "System.CommandLine": {
         "type": "CentralTransitive",
