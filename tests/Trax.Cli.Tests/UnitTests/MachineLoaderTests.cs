@@ -100,4 +100,31 @@ public class MachineLoaderTests
 
         load.Should().Throw<InvalidOperationException>().WithMessage("*--machine*");
     }
+
+    [Test]
+    public void Load_reports_a_clear_error_for_a_file_that_is_not_a_dotnet_assembly()
+    {
+        var fake = Path.Combine(Path.GetTempPath(), $"trax-not-an-assembly-{Guid.NewGuid():N}.dll");
+        File.WriteAllText(fake, "this is not a managed assembly");
+        try
+        {
+            var load = () => MachineLoader.Load(fake, null);
+
+            load.Should().Throw<InvalidOperationException>().WithMessage("*as a .NET assembly*");
+        }
+        finally
+        {
+            File.Delete(fake);
+        }
+    }
+
+    [Test]
+    public void Load_throws_when_the_assembly_contains_no_machines()
+    {
+        // The CLI's own assembly has the command code but no IMachine implementations. This is also the shape
+        // of the version-mismatch case (a machine built against a different engine is not recognized).
+        var load = () => MachineLoader.Load(typeof(MachineLoader).Assembly.Location, null);
+
+        load.Should().Throw<InvalidOperationException>().WithMessage("*No machines found*");
+    }
 }

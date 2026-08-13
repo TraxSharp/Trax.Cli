@@ -183,6 +183,30 @@ public class MachineCommandTests
     }
 
     [Test]
+    public void Check_with_a_missing_assembly_returns_one()
+    {
+        var exit = 0;
+        var stderr = CaptureErr(() =>
+        {
+            exit = MachineCommand.RunCheck(
+                Path.Combine(_tempDir, "missing.dll"),
+                null,
+                Path.Combine(_tempDir, "ir"),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                new FakeNodeRunner()
+            );
+        });
+
+        exit.Should().Be(1);
+        stderr.Should().Contain("not found");
+    }
+
+    [Test]
     public void Generate_exit_code_propagates_through_the_real_command_invocation()
     {
         // The exit code must survive Parse().Invoke() (which is what Program returns), not just the handler:
@@ -236,6 +260,49 @@ public class MachineCommandTests
 
         exit.Should().Be(1);
         stderr.Should().Contain("already exists");
+    }
+
+    [Test]
+    public void New_through_the_command_invocation_scaffolds_a_file()
+    {
+        var exit = 99;
+        CaptureOut(() =>
+        {
+            exit = MachineCommand
+                .Create()
+                .Parse(["new", "checkout", "--output", _tempDir])
+                .Invoke();
+        });
+
+        exit.Should().Be(0);
+        File.Exists(Path.Combine(_tempDir, "CheckoutMachine.cs")).Should().BeTrue();
+    }
+
+    [Test]
+    public void Check_through_the_command_invocation_reports_missing_and_returns_one()
+    {
+        // No committed IR at --ir-out, so check reports MISSING and exits 1, through the real parser wiring
+        // (no node needed: an IR-only check never shells out).
+        var irOut = Path.Combine(_tempDir, "ir");
+        var exit = 0;
+        var stdout = CaptureOut(() =>
+        {
+            exit = MachineCommand
+                .Create()
+                .Parse([
+                    "check",
+                    "--assembly",
+                    ThisAssembly,
+                    "--machine",
+                    TurnstileName,
+                    "--ir-out",
+                    irOut,
+                ])
+                .Invoke();
+        });
+
+        exit.Should().Be(1);
+        stdout.Should().Contain("MISSING");
     }
 
     [Test]
