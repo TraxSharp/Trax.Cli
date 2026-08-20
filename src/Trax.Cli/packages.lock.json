@@ -16,25 +16,25 @@
       },
       "Microsoft.OpenApi.Readers": {
         "type": "Direct",
-        "requested": "[1.6.29, )",
-        "resolved": "1.6.29",
-        "contentHash": "GYtIRq1iUO6zwnrUa63ELQHHSgMXRAxkXhtSyOKvH8tVPXql0HOjPTgJv7ZzGuzEzCIDZNujKUjrfi+36xxDSg==",
+        "requested": "[1.6.30, )",
+        "resolved": "1.6.30",
+        "contentHash": "IS7LR9bK+XSQYzMNXZOVg8a0dmD8XYuKx7b0jxYqFvI3kO1dQ6toDhNXShSWYc3EPBd4s//xiBBBbm+R6+anZA==",
         "dependencies": {
-          "Microsoft.OpenApi": "1.6.29",
+          "Microsoft.OpenApi": "1.6.30",
           "SharpYaml": "2.1.1"
         }
       },
       "Scriban": {
         "type": "Direct",
-        "requested": "[7.2.5, )",
-        "resolved": "7.2.5",
-        "contentHash": "6HDyv0P6PVdx/prWM3Aw0QHAT/DCpkBxOovZ2iPIH4L4ZvJ13JNYJgyUI+xJ5K2agXreYTBe23AL5ZQNTqJQvA=="
+        "requested": "[7.2.6, )",
+        "resolved": "7.2.6",
+        "contentHash": "k6DvaRY83jtigNudMoYlN5Zg42JEDDOCSeKrnpHiE5Gthkd9Fr+6VnYFnL3DqtkZTtPezJJdoX3ZfOTTFpQEMg=="
       },
       "System.CommandLine": {
         "type": "Direct",
-        "requested": "[2.0.9, )",
-        "resolved": "2.0.9",
-        "contentHash": "SW0WhEk4NFVZ4lOnsLrHQOV/7s0eTidezNybHQWXfqhuXWB17X3RXbrifeWBbUx1iu+NcYchVSufmW7svjUEnA=="
+        "requested": "[2.0.11, )",
+        "resolved": "2.0.11",
+        "contentHash": "Pmg3/T0M37ZS3ovwPHtfBNTCdqNpnxo+tnZMg8JDHVR0qD8KwcPUKlheEiZysb1En8IyH7yDoa9QDq97Ny/vhQ=="
       },
       "Trax.Effect.StateMachine.Persistence": {
         "type": "Direct",
@@ -205,8 +205,8 @@
       },
       "Microsoft.OpenApi": {
         "type": "Transitive",
-        "resolved": "1.6.29",
-        "contentHash": "mLoYWWwRP3C7Iier4dDzepq0kw1Tpdlh+B6KZ1SNcgq/tWI8aC41WYvIsJpsAS4UG1IV4c0AAnZs8qCPobzBkQ=="
+        "resolved": "1.6.30",
+        "contentHash": "GIxOTS4vUCdIRDt+BcnJQKdaKb9b+L14IJnzkbHOXlm7JTbIyp37DpA2SdpxjdTB1RPQ1jhPwbdoNcUWznHsrg=="
       },
       "Npgsql": {
         "type": "Transitive",
