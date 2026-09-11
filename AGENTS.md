@@ -46,9 +46,10 @@ not to record. The format is
 `tests/Trax.Cli.Tests.Meta/` holds nine convention guards, and **all nine are shared** with
 the other repos. This repo owns no convention guard of its own.
 
-The census (every guard credited to an ADR or explicitly opted out) is **not** switched on
-here yet. Trax.Docs runs it over its own guards; this repo will once the shared copies carry
-citations of the central ADRs they enforce.
+The census is on: every guard class under that folder is either credited to an ADR or
+carries `Not ADR-enforcing:` with a reason, and the `adr-guard` job checks it. A new guard is
+unclassified until you choose, and the build says so. Opting out is a normal answer; a reason
+that reads as a deferral is not.
 
 ## Running the tests
 
