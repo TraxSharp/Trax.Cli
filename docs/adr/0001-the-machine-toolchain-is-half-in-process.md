@@ -42,11 +42,14 @@ the whole reason the coupling is acceptable: it fails legibly.
 works and the twin does not.
 
 **The consumer's own dependencies resolve from their assembly's directory**, since the CLI
-loads code it did not build.
+loads code it did not build. A version mismatch surfaces as "no machines found" with a hint
+naming the engine package, rather than as a cast failure, because a machine built against a
+different version simply fails to unify with the CLI's own `IMachine`.
 
 **The node boundary is behind an interface**, so the orchestration, staging and drift logic
 are unit-testable with a fake that writes canned files, and only the byte-parity tests
-spawn a real process.
+spawn a real **node** process. `NodeRunnerTests` spawns real processes too, using `dotnet` as
+a stand-in so the suite does not require node.
 
 ## Exemplars
 
@@ -61,4 +64,5 @@ verified by it.
 
 ## Changelog
 
+- **2026-09-11**: Described the version-mismatch error as it actually reads, and corrected which tests spawn processes.
 - **2026-09-11**: Recorded.

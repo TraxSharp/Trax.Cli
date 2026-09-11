@@ -18,7 +18,7 @@ if your work contradicts one, say so rather than silently overriding it.
 | anything under `Machines/` | [0001](./docs/adr/0001-the-machine-toolchain-is-half-in-process.md), the C# half loads a compiled assembly and the TypeScript half spawns node |
 
 Decisions binding more than one repo live in the central corpus at `Trax.Docs/adr/`, whose
-index lists them by repo. Seven name `cli`: executable guards, exact version pinning, the
+index lists them by repo. Eight name `cli`: executable guards, exact version pinning, the
 dependency direction, the three test conventions, and the documentation lints. In a
 workspace checkout the index is at `../Trax.Docs/adr/README.md`; that path does not resolve
 on GitHub, because it crosses a repository boundary.
