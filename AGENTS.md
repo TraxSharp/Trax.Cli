@@ -1,0 +1,60 @@
+# Trax.Cli
+
+The `trax` command-line tool: scaffolds Trax projects from a GraphQL or OpenAPI schema, and
+generates state-machine artifacts (IR, TypeScript twin, differential corpus) from a compiled
+machine. It sits after `Trax.Scheduler` in the dependency order and nothing depends on it.
+
+This file is the entry point. It routes; it does not restate the rules.
+
+## Architecture decisions
+
+`docs/adr/` records **why** things are the way they are. A documentation page says what the
+rule is; an ADR says whether it is a deliberate constraint or an accident, so you can tell
+which ones are safe to change. Read the relevant one before proposing to change a rule, and
+if your work contradicts one, say so rather than silently overriding it.
+
+| Working on | Read first |
+| --- | --- |
+| anything under `Machines/` | [0001](./docs/adr/0001-the-machine-toolchain-is-half-in-process.md), the C# half loads a compiled assembly and the TypeScript half spawns node |
+
+Decisions binding more than one repo live in the central corpus at `Trax.Docs/adr/`, whose
+index lists them by repo. Seven name `cli`: executable guards, exact version pinning, the
+dependency direction, the three test conventions, and the documentation lints. In a
+workspace checkout the index is at `../Trax.Docs/adr/README.md`; that path does not resolve
+on GitHub, because it crosses a repository boundary.
+
+## When your change makes a decision
+
+Most changes do not. When one does (reversing it would cost something real, a future reader
+would ask why it is like this, and there were genuine alternatives), it takes five steps and
+the build enforces four. The `adr-guard` job runs on every pull request.
+
+| | Step | Enforced |
+| --- | --- | --- |
+| 1 | Notice you made a decision, and write the ADR | no, this is the human step |
+| 2 | Tag it `areas`, and add it to `docs/adr/README.md` | yes |
+| 3 | Say where it stands in `## Status` and record it in `## Changelog` | yes |
+| 4 | Give it `## Exemplars`: guards, `**Enforced elsewhere:**`, or `**Unenforced:**` with a reason | yes |
+| 5 | Have each guard you named cite the ADR back, in its docstring and its failure message | yes |
+
+Step 1 is the only one you have to remember, because no test can detect a decision you chose
+not to record. The format is
+[`.claude/skills/recording-decisions/ADR-FORMAT.md`](./.claude/skills/recording-decisions/ADR-FORMAT.md).
+
+## Guards
+
+`tests/Trax.Cli.Tests.Meta/` holds nine convention guards, and **all nine are shared** with
+the other repos. This repo owns no convention guard of its own.
+
+The census (every guard credited to an ADR or explicitly opted out) is **not** switched on
+here yet. Trax.Docs runs it over its own guards; this repo will once the shared copies carry
+citations of the central ADRs they enforce.
+
+## Running the tests
+
+```bash
+dotnet test
+```
+
+The node-backed machine tests use `dotnet --version` as a stand-in executable, so the suite
+does not require node to be installed. Only the byte-parity tests spawn the real thing.

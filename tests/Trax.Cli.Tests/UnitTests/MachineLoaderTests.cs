@@ -9,6 +9,8 @@ namespace Trax.Cli.Tests.UnitTests;
 /// <see cref="MachineLoader"/> turns a compiled assembly into the <see cref="IMachine"/> the CLI exports. These
 /// pin discovery (only real machines, sorted), selection (single, named, ambiguous, unknown), and the file
 /// errors, since a wrong pick or a silent mis-load would generate the wrong machine's artifacts.
+///
+/// <para>Enforces <c>docs/adr/0001-the-machine-toolchain-is-half-in-process.md</c>.</para>
 /// </summary>
 public class MachineLoaderTests
 {
@@ -25,7 +27,13 @@ public class MachineLoaderTests
     {
         var machines = MachineLoader.DiscoverMachines(typeof(DeclarativeTurnstileMachine).Assembly);
 
-        machines.Should().Contain(typeof(DeclarativeTurnstileMachine));
+        machines
+            .Should()
+            .Contain(
+                typeof(DeclarativeTurnstileMachine),
+                "the CLI asks the compiled machine what it is rather than parsing its source, so "
+                    + "discovery must find every real IMachine. See docs/adr/0001-the-machine-toolchain-is-half-in-process.md."
+            );
         machines.Should().Contain(typeof(SecondTurnstileMachine));
         // Abstract Machine<,> itself and non-machine types are excluded.
         machines.Should().OnlyContain(t => typeof(IMachine).IsAssignableFrom(t) && !t.IsAbstract);
