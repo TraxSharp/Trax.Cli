@@ -64,5 +64,4 @@ verified by it.
 
 ## Changelog
 
-- **2026-09-11**: Described the version-mismatch error as it actually reads, and corrected which tests spawn processes.
 - **2026-09-11**: Recorded.
