@@ -36,8 +36,10 @@ the CLI's own `IMachine` only when both were built against the same engine versi
 mismatch is reported as a clear error rather than surfacing as a raw cast failure, which is
 the whole reason the coupling is acceptable: it fails legibly.
 
-**node is a hard requirement for half the command.** `INodeRunner.IsAvailable()` checks once
-for a working `node` on PATH. Without it the IR export still works and the twin does not.
+**node is a hard requirement for half the command.** `MachineGenerator` asks
+`INodeRunner.IsAvailable()` before it shells out, at the one call site, and the check is a
+`node --version` spawn rather than anything memoised. Without node the IR export still
+works and the twin does not.
 
 **The consumer's own dependencies resolve from their assembly's directory**, since the CLI
 loads code it did not build.
