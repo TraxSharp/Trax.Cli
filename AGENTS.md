@@ -2,7 +2,10 @@
 
 The `trax` command-line tool: scaffolds Trax projects from a GraphQL or OpenAPI schema, and
 generates state-machine artifacts (IR, TypeScript twin, differential corpus) from a compiled
-machine. It sits after `Trax.Scheduler` in the dependency order and nothing depends on it.
+machine. It sits after `Trax.Scheduler` in the dependency order, and the declared order puts
+`Trax.Samples` downstream of it: `DependencyDirectionTests` lists `Trax.Cli` among Samples'
+allowed upstream. No repo pins a `Trax.Cli.*` package today, so in practice nothing depends
+on it yet.
 
 This file is the entry point. It routes; it does not restate the rules.
 
@@ -19,9 +22,9 @@ if your work contradicts one, say so rather than silently overriding it.
 
 Decisions binding more than one repo live in the central corpus at `Trax.Docs/adr/`, whose
 index lists them by repo. Eight name `cli`: executable guards, exact version pinning, the
-dependency direction, the three test conventions, and the documentation lints. In a
-workspace checkout the index is at `../Trax.Docs/adr/README.md`; that path does not resolve
-on GitHub, because it crosses a repository boundary.
+dependency direction, the three test conventions, the documentation lints, and the public API
+baseline. In a workspace checkout the index is at `../Trax.Docs/adr/README.md`; that path does
+not resolve on GitHub, because it crosses a repository boundary.
 
 ## When your change makes a decision
 
@@ -57,5 +60,7 @@ that reads as a deferral is not.
 dotnet test
 ```
 
-The node-backed machine tests use `dotnet --version` as a stand-in executable, so the suite
-does not require node to be installed. Only the byte-parity tests spawn the real thing.
+The machine unit tests drive a fake `INodeRunner` and spawn no process at all. Only the
+byte-parity integration test spawns real node, and it skips itself at runtime when node is
+not on PATH, which is what lets the suite run without node installed. `NodeRunnerTests` does
+spawn a real process, using `dotnet` as a stand-in executable.

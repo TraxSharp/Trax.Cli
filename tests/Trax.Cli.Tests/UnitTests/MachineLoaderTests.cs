@@ -129,8 +129,8 @@ public class MachineLoaderTests
     [Test]
     public void Load_throws_when_the_assembly_contains_no_machines()
     {
-        // The CLI's own assembly has the command code but no IMachine implementations. This is also the shape
-        // of the version-mismatch case (a machine built against a different engine is not recognized).
+        // The CLI's own assembly has the command code but no IMachine implementations. This is the empty-assembly
+        // path, not a real engine-version mismatch, which nothing here exercises; see docs/adr/0001.
         var load = () => MachineLoader.Load(typeof(MachineLoader).Assembly.Location, null);
 
         load.Should().Throw<InvalidOperationException>().WithMessage("*No machines found*");
