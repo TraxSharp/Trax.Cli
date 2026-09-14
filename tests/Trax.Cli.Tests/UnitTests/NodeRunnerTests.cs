@@ -10,6 +10,7 @@ namespace Trax.Cli.Tests.UnitTests;
 ///
 /// <para>Enforces <c>docs/adr/0001-the-machine-toolchain-is-half-in-process.md</c>.</para>
 /// </summary>
+[Property("adr", "docs/adr/0001-the-machine-toolchain-is-half-in-process.md")]
 public class NodeRunnerTests
 {
     [Test]
