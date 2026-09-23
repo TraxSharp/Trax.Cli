@@ -1,0 +1,113 @@
+using FluentAssertions;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Trax.Cli.Generator;
+using Trax.Cli.Models;
+using OperationKind = Trax.Cli.Models.OperationKind;
+
+namespace Trax.Cli.Tests.UnitTests;
+
+/// <summary>
+/// A scaffolded project has to compile against the Trax packages it references. The generated
+/// csproj floats on <c>1.*</c>, so a train template written against an API Trax later removes
+/// breaks every new scaffold the moment that release ships, and string checks on the template do
+/// not notice. This compiles what the generator renders against the Trax assemblies the tests run
+/// with.
+/// </summary>
+public class ScaffoldCompilationTests
+{
+    [TestCase(OperationKind.Query)]
+    [TestCase(OperationKind.Mutation)]
+    public void A_rendered_train_compiles_against_the_referenced_Trax(OperationKind kind)
+    {
+        var renderer = new CodeRenderer();
+        var op = new ApiOperation
+        {
+            Name = "GetPlayer",
+            Kind = kind,
+            Group = "Players",
+            InputType = new ApiType
+            {
+                Name = "GetPlayerInput",
+                Fields =
+                [
+                    new ApiField
+                    {
+                        Name = "Id",
+                        TypeName = "Guid",
+                        IsRequired = true,
+                    },
+                ],
+            },
+            OutputType = new ApiType
+            {
+                Name = "GetPlayerOutput",
+                Fields =
+                [
+                    new ApiField
+                    {
+                        Name = "Result",
+                        TypeName = "string",
+                        IsRequired = true,
+                    },
+                ],
+            },
+        };
+
+        (string Name, string Source)[] sources =
+        [
+            (
+                "GlobalUsings.cs",
+                """
+                global using System;
+                global using System.Collections.Generic;
+                global using System.Linq;
+                global using System.Threading.Tasks;
+                """
+            ),
+            ("GraphQLNamespaces.cs", renderer.RenderGraphQLNamespaces(["Players"], "MyApi")),
+            ("Input.cs", renderer.RenderInput(op, "MyApi")),
+            ("Output.cs", renderer.RenderOutput(op, "MyApi")),
+            ("ITrain.cs", renderer.RenderTrainInterface(op, "MyApi")),
+            ("Train.cs", renderer.RenderTrainImplementation(op, "MyApi")),
+            ("Junction.cs", renderer.RenderJunction(op, "MyApi")),
+        ];
+
+        var errors = string.Join(
+            Environment.NewLine,
+            Compile(sources)
+                .Where(d => d.Severity == DiagnosticSeverity.Error)
+                .Select(d => d.ToString())
+        );
+
+        errors
+            .Should()
+            .BeEmpty(
+                "a new scaffold must build against the Trax it references, or the first thing a "
+                    + "user sees is a compile error in code they did not write"
+            );
+    }
+
+    private static IEnumerable<Diagnostic> Compile(
+        IEnumerable<(string Name, string Source)> sources
+    )
+    {
+        // Every assembly deployed with the tests, which includes the Trax packages and their
+        // dependencies whether or not anything has loaded them yet.
+        var references = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!)
+            .Split(Path.PathSeparator)
+            .Select(path => MetadataReference.CreateFromFile(path));
+
+        return CSharpCompilation
+            .Create(
+                "Scaffold",
+                sources.Select(s => CSharpSyntaxTree.ParseText(s.Source, path: s.Name)),
+                references,
+                new CSharpCompilationOptions(
+                    OutputKind.DynamicallyLinkedLibrary,
+                    nullableContextOptions: NullableContextOptions.Enable
+                )
+            )
+            .GetDiagnostics();
+    }
+}
