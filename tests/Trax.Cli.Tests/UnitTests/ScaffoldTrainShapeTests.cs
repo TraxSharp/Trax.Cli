@@ -1,4 +1,7 @@
 using FluentAssertions;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Trax.Cli.Generator;
 using Trax.Cli.Models;
 using Trax.Cli.Schema.GraphQL;
@@ -13,9 +16,10 @@ namespace Trax.Cli.Tests.UnitTests;
 /// <para><c>ScaffoldCompilationTests</c> cannot catch a return to the old template: it compiles
 /// against the Trax.Core the tests deploy, which a transitive pin holds at a version where
 /// <c>RunInternal</c> and <c>Activate</c> still exist, so old-shape code still compiles there. A
-/// scaffold only breaks against the Trax a new project floats to. This reads the generated
+/// scaffold only breaks against the Trax a new project floats to. This parses the generated
 /// source instead, for every fixture schema, which covers query, mutation and Unit-output
-/// trains.</para>
+/// trains. It checks syntax rather than text, so a block-bodied <c>Junctions()</c> passes and a
+/// comment that mentions <c>Activate(</c> does not fail it.</para>
 /// </summary>
 [TestFixture]
 [Property("adr", "Trax.Docs/adr/0016-a-junction-chain-is-a-declaration-not-a-step-of-the-work.md")]
@@ -71,25 +75,67 @@ public class ScaffoldTrainShapeTests
         trains.Should().NotBeEmpty("every fixture schema has at least one operation");
 
         foreach (var (path, source) in trains)
-            source
-                .Should()
-                .Contain(
-                    "protected override Task<Either<Exception, ",
-                    $"{path} must override the chain declaration"
-                )
-                .And.Contain(
-                    "Junctions() =>",
-                    $"{path} must declare its chain in Junctions(), which current Trax requires"
+        {
+            var trainClass = CSharpSyntaxTree
+                .ParseText(source)
+                .GetRoot()
+                .DescendantNodes()
+                .OfType<ClassDeclarationSyntax>()
+                .SingleOrDefault(c =>
+                    c.Identifier.ValueText == Path.GetFileNameWithoutExtension(path)
                 );
 
-        foreach (var (path, source) in sources)
-            source
+            trainClass.Should().NotBeNull($"{path} must declare the train class it is named for");
+
+            trainClass!
+                .Members.OfType<MethodDeclarationSyntax>()
                 .Should()
-                .NotContainAny(
-                    ["RunInternal", "Activate("],
-                    $"{path} would not compile against the Trax a new scaffold references"
+                .Contain(
+                    m =>
+                        m.Identifier.ValueText == "Junctions"
+                        && m.Modifiers.Any(SyntaxKind.OverrideKeyword),
+                    $"{path} must declare its chain by overriding Junctions(), which current Trax requires"
                 );
+        }
+
+        foreach (var (path, source) in sources)
+        {
+            var root = CSharpSyntaxTree.ParseText(source).GetRoot();
+
+            root.DescendantNodes()
+                .OfType<MemberDeclarationSyntax>()
+                .Where(m => MemberName(m) == "RunInternal")
+                .Should()
+                .BeEmpty($"{path} would not compile against the Trax a new scaffold references");
+
+            root.DescendantNodes()
+                .OfType<InvocationExpressionSyntax>()
+                .Where(i => InvokedName(i.Expression) == "Activate")
+                .Should()
+                .BeEmpty($"{path} would not compile against the Trax a new scaffold references");
+        }
     }
+
+    private static string? MemberName(MemberDeclarationSyntax member) =>
+        member switch
+        {
+            MethodDeclarationSyntax m => m.Identifier.ValueText,
+            PropertyDeclarationSyntax p => p.Identifier.ValueText,
+            _ => null,
+        };
+
+    /// <summary>
+    /// The simple name an invocation calls, whether written <c>Activate(...)</c>,
+    /// <c>this.Activate(...)</c> or <c>Activate&lt;T&gt;(...)</c>.
+    /// </summary>
+    private static string? InvokedName(ExpressionSyntax expression) =>
+        expression switch
+        {
+            MemberAccessExpressionSyntax access => access.Name.Identifier.ValueText,
+            MemberBindingExpressionSyntax binding => binding.Name.Identifier.ValueText,
+            SimpleNameSyntax name => name.Identifier.ValueText,
+            _ => null,
+        };
 
     [Test]
     public void The_fixtures_include_a_Unit_output_train()

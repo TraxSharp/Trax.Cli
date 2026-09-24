@@ -13,6 +13,14 @@ namespace Trax.Cli.Tests.UnitTests;
 /// breaks every new scaffold the moment that release ships, and string checks on the template do
 /// not notice. This compiles what the generator renders against the Trax assemblies the tests run
 /// with.
+///
+/// <para>Those are not the Trax a new scaffold floats to. The tests reference no Trax.Core
+/// directly: it arrives transitively through the <c>Trax.Effect.StateMachine.Persistence</c> pin
+/// in <c>Directory.Packages.props</c>, which currently resolves Trax.Core 1.6.0, and 1.6.0 still
+/// has <c>RunInternal</c> and <c>Activate</c>. So in CI a template that goes back to the old shape
+/// still compiles here, and this only catches that regression once the pin moves to a Trax.Core
+/// without them (or locally, where <c>trax-local.props</c> swaps in the freshly packed build).
+/// Until then <c>ScaffoldTrainShapeTests</c> is what guards the train shape.</para>
 /// </summary>
 public class ScaffoldCompilationTests
 {
