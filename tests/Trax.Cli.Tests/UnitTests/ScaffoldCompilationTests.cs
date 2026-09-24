@@ -54,8 +54,71 @@ public class ScaffoldCompilationTests
             },
         };
 
+        AssertCompiles(
+            renderer,
+            op,
+            [
+                ("GraphQLNamespaces.cs", renderer.RenderGraphQLNamespaces(["Players"], "MyApi")),
+                ("Input.cs", renderer.RenderInput(op, "MyApi")),
+                ("Output.cs", renderer.RenderOutput(op, "MyApi")),
+            ]
+        );
+    }
+
+    /// <summary>
+    /// An operation that returns nothing scaffolds a train whose output is LanguageExt's
+    /// <c>Unit</c>, which the train, interface and junction templates import only on that
+    /// branch. No output record is written for it.
+    /// </summary>
+    [Test]
+    public void A_rendered_train_with_a_Unit_output_compiles_against_the_referenced_Trax()
+    {
+        var renderer = new CodeRenderer();
+        var op = new ApiOperation
+        {
+            Name = "DeletePlayer",
+            Kind = OperationKind.Mutation,
+            Group = "Players",
+            InputType = new ApiType
+            {
+                Name = "DeletePlayerInput",
+                Fields =
+                [
+                    new ApiField
+                    {
+                        Name = "Id",
+                        TypeName = "Guid",
+                        IsRequired = true,
+                    },
+                ],
+            },
+            OutputType = new ApiType { Name = "Unit", IsBuiltIn = true },
+        };
+
+        renderer
+            .RenderJunction(op, "MyApi")
+            .Should()
+            .Contain("Junction<DeletePlayerInput, Unit>", "the premise is the Unit branch");
+
+        AssertCompiles(
+            renderer,
+            op,
+            [
+                ("GraphQLNamespaces.cs", renderer.RenderGraphQLNamespaces(["Players"], "MyApi")),
+                ("Input.cs", renderer.RenderInput(op, "MyApi")),
+            ]
+        );
+    }
+
+    private static void AssertCompiles(
+        CodeRenderer renderer,
+        ApiOperation op,
+        (string Name, string Source)[] models
+    )
+    {
         (string Name, string Source)[] sources =
         [
+            .. models,
             (
                 "GlobalUsings.cs",
                 """
@@ -65,9 +128,6 @@ public class ScaffoldCompilationTests
                 global using System.Threading.Tasks;
                 """
             ),
-            ("GraphQLNamespaces.cs", renderer.RenderGraphQLNamespaces(["Players"], "MyApi")),
-            ("Input.cs", renderer.RenderInput(op, "MyApi")),
-            ("Output.cs", renderer.RenderOutput(op, "MyApi")),
             ("ITrain.cs", renderer.RenderTrainInterface(op, "MyApi")),
             ("Train.cs", renderer.RenderTrainImplementation(op, "MyApi")),
             ("Junction.cs", renderer.RenderJunction(op, "MyApi")),
