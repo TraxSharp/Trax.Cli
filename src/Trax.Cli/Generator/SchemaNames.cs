@@ -7,7 +7,8 @@ namespace Trax.Cli.Generator;
 /// Checks every name a schema contributes to the generated project before anything is written.
 /// Names become identifiers, namespaces, type references and file paths, so each one has to match
 /// <c>[A-Za-z_][A-Za-z0-9_]*</c> (a project name may be several of those joined by dots, and a
-/// field type may be a generic or array expression built from them). A schema with any name that
+/// field type may be a generic or array expression built from them), and no two properties of one
+/// type or values of one enum may be the same name after conversion. A schema with any name that
 /// does not is refused as a whole, with every offending name listed, rather than rewritten: a
 /// rewritten name changes the generated contract and can collide with another one, while a
 /// refusal leaves the author to rename it in the schema.
@@ -34,6 +35,7 @@ internal static partial class SchemaNames
             Check(apiEnum.Name, "enum", problems);
             foreach (var value in apiEnum.Values)
                 Check(value, $"enum value of '{apiEnum.Name}'", problems);
+            CheckUnique(apiEnum.Values, $"enum value of '{apiEnum.Name}'", problems);
         }
 
         foreach (var operation in schema.Operations)
@@ -51,7 +53,8 @@ internal static partial class SchemaNames
         throw new InvalidOperationException(
             "The schema has names that cannot be used in generated C#. Every name has to match "
                 + Pattern
-                + " (after the generator's PascalCase conversion); rename these in the schema:"
+                + " (after the generator's PascalCase conversion), and no two names in one type or"
+                + " enum may convert to the same one; rename these in the schema:"
                 + Environment.NewLine
                 + string.Join(
                     Environment.NewLine,
@@ -71,6 +74,23 @@ internal static partial class SchemaNames
                     $"type of property '{field.Name}' of '{type.Name}': '{field.TypeName}'"
                 );
         }
+        CheckUnique(type.Fields.Select(f => f.Name), $"property of '{type.Name}'", problems);
+    }
+
+    /// <summary>
+    /// Two schema names that the PascalCase conversion turns into one (<c>first-name</c> and
+    /// <c>firstName</c>) would declare the same member twice. The schema is refused rather than
+    /// one of them renamed or dropped, for the same reason a name outside the pattern is.
+    /// </summary>
+    private static void CheckUnique(IEnumerable<string> names, string kind, List<string> problems)
+    {
+        foreach (
+            var name in names
+                .GroupBy(n => n, StringComparer.Ordinal)
+                .Where(g => g.Count() > 1)
+                .Select(g => g.Key)
+        )
+            problems.Add($"{kind} '{name}' (more than once after the PascalCase conversion)");
     }
 
     private static void Check(string name, string kind, List<string> problems)
