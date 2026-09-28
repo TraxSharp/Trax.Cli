@@ -10,7 +10,12 @@ status: accepted
 operations, groups, the project name) into a C# identifier, a namespace segment or a file
 name. After the PascalCase conversion it already applies, each one must match
 `[A-Za-z_][A-Za-z0-9_]*`, and a schema with any that does not is refused as a whole, every
-offending name listed, before anything is written or `--force` deletes anything. Free text
+offending name listed, before anything is written or `--force` deletes anything. Five type
+names are reserved and refused for a model: `Unit`, `Guid`, `DateTime`, `DateOnly` and `Uri`,
+which the parsers write for the framework type, so a model of that name would silently take
+its place. Any other name is safe, including `Task` or `File`: generated code refers to
+framework types and to models fully qualified (`global::`), never through a using directive
+that could make them ambiguous. Free text
 (descriptions, HTTP paths) is never refused: it is collapsed to one line and escaped for where
 it lands, a `///` comment, a `//` comment or a string literal.
 
@@ -46,6 +51,8 @@ that uses them has to rename them before it can be generated.
   identifiers are refused before anything is written, `--force` deletes nothing for a refused
   schema, and a GraphQL schema whose descriptions contain code generates a library that
   compiles and declares only the schema's types.
+- `FrameworkTypeNameTests` pins the reserved names and compiles a library whose models are
+  named `Task`, `File`, `Exception` and `ILogger`.
 - `SchemaTextRenderingTests` pins the escaping of free text for each place it lands.
 - [CLI](/docs/reference/cli#names-and-descriptions) is the rule this produces.
 
@@ -54,4 +61,6 @@ Not covered: nothing checks that a new template renders schema text through
 
 ## Changelog
 
+- **2026-09-28**: Reserved five framework type names; models and framework types are referenced
+  fully qualified.
 - **2026-09-27**: Recorded.

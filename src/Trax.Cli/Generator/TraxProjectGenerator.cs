@@ -52,7 +52,15 @@ public class TraxProjectGenerator
         var hasSharedTypes =
             schema.Types.Any(t => !t.IsBuiltIn && t.Fields.Count > 0) || schema.Enums.Count > 0;
         if (hasSharedTypes)
+        {
             _renderer.SetModelsNamespace($"{projectName}.Trains.Models");
+            _renderer.SetModelNames(
+                schema
+                    .Types.Where(t => !t.IsBuiltIn && t.Fields.Count > 0)
+                    .Select(t => t.Name)
+                    .Concat(schema.Enums.Select(e => e.Name))
+            );
+        }
 
         // Write trains csproj
         WriteFile(
@@ -86,7 +94,7 @@ public class TraxProjectGenerator
         // Write shared types in Models/
         foreach (var apiType in schema.Types)
         {
-            if (apiType.IsBuiltIn || apiType.Name == "Unit" || apiType.Fields.Count == 0)
+            if (apiType.IsBuiltIn || apiType.Fields.Count == 0)
                 continue;
 
             var modelsDir = Path.Combine(trainsDir, "Models");
