@@ -10,17 +10,14 @@ namespace Trax.Cli.Tests.UnitTests;
 /// swaps it in only once every step has succeeded, so a failed run leaves what was there; and it refuses a
 /// directory it could not safely replace at all.
 ///
-/// <para>Enforces cli/0004 (<c>docs/adr/0004-generate-replaces-its-output-only-on-success-and-never-a-repository.md</c>).</para>
+/// <para>Enforces cli/0004 (<c>docs/adr/0004-generate-force-replaces-only-on-success.md</c>).</para>
 /// </summary>
 [TestFixture]
-[Property(
-    "adr",
-    "docs/adr/0004-generate-replaces-its-output-only-on-success-and-never-a-repository.md"
-)]
+[Property("adr", "docs/adr/0004-generate-force-replaces-only-on-success.md")]
 public class GenerateForceTests
 {
     private const string Adr =
-        "see cli/0004 (docs/adr/0004-generate-replaces-its-output-only-on-success-and-never-a-repository.md)";
+        "see cli/0004 (docs/adr/0004-generate-force-replaces-only-on-success.md)";
 
     private string _root = null!;
     private int _originalExitCode;
