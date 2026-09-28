@@ -191,6 +191,145 @@ public class SchemaNameValidationTests
     }
 
     [Test]
+    public void OpenApi_component_schemas_that_become_one_type_are_refused_naming_both()
+    {
+        var schema = new OpenApiSchemaParser().Parse(
+            InvalidFixturePath("colliding-component-names.json")
+        );
+
+        var act = () => new TraxProjectGenerator().GenerateTrainsLibrary(schema, _outputDir, "Api");
+
+        act.Should()
+            .Throw<InvalidOperationException>()
+            .WithMessage("*'Dto'*'Billing.Dto'*'Shipping.Dto'*", Adr);
+        Directory.Exists(_root).Should().BeFalse("nothing is written for a refused schema; " + Adr);
+    }
+
+    [Test]
+    public void An_OpenApi_type_and_enum_of_one_name_are_refused_naming_both()
+    {
+        var schema = new OpenApiSchemaParser().Parse(
+            InvalidFixturePath("type-and-enum-names.json")
+        );
+
+        var act = () => SchemaNames.Validate(schema, "Api");
+
+        act.Should()
+            .Throw<InvalidOperationException>()
+            .WithMessage("*type or enum 'Status'*'status' (as 'Status')*'Status'*", Adr);
+    }
+
+    [Test]
+    public void GraphQL_operations_that_become_one_name_are_refused_naming_both()
+    {
+        var schema = new GraphQLSchemaParser().Parse(
+            InvalidFixturePath("colliding-operation-names.graphql")
+        );
+
+        var act = () => new TraxProjectGenerator().GenerateTrainsLibrary(schema, _outputDir, "Api");
+
+        act.Should()
+            .Throw<InvalidOperationException>()
+            .WithMessage("*operation 'UserCount'*'Query.user_count'*'Query.userCount'*", Adr);
+        Directory.Exists(_root).Should().BeFalse(Adr);
+    }
+
+    [Test]
+    public void GraphQL_types_that_differ_only_in_case_are_refused()
+    {
+        // Models/PlayerStats.cs and Models/Playerstats.cs are one file on macOS and Windows.
+        var schema = new GraphQLSchemaParser().Parse(
+            InvalidFixturePath("case-only-type-names.graphql")
+        );
+
+        var act = () => SchemaNames.Validate(schema, "Api");
+
+        act.Should()
+            .Throw<InvalidOperationException>()
+            .WithMessage("*'PlayerStats'*'Playerstats'*", Adr);
+    }
+
+    [Test]
+    public void Operations_that_differ_only_in_case_are_refused()
+    {
+        var schema = EmptySchema();
+        schema.Operations.Add(Operation("GetUser", "Users"));
+        schema.Operations.Add(Operation("Getuser", "Users"));
+
+        var act = () => SchemaNames.Validate(schema, "Api");
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*'GetUser'*'Getuser'*", Adr);
+    }
+
+    [Test]
+    public void Groups_that_differ_only_in_case_are_refused()
+    {
+        var schema = EmptySchema();
+        schema.Operations.Add(Operation("GetStats", "PlayerStats"));
+        schema.Operations.Add(Operation("ListStats", "Playerstats"));
+
+        var act = () => SchemaNames.Validate(schema, "Api");
+
+        act.Should()
+            .Throw<InvalidOperationException>()
+            .WithMessage("*group*'PlayerStats'*'Playerstats'*", Adr);
+    }
+
+    [Test]
+    public void An_OpenApi_inline_object_named_like_a_component_gets_its_own_type()
+    {
+        var schema = new OpenApiSchemaParser().Parse(FixturePath("inline-name-reuse.json"));
+
+        var address = schema.Types.Single(t => t.Name == "Address");
+        address
+            .Fields.Select(f => f.Name)
+            .Should()
+            .BeEquivalentTo(["Street", "City"], "the component keeps its own fields");
+        var customerAddress = schema
+            .Types.Single(t => t.Name == "Customer")
+            .Fields.Single(f => f.Name == "Address");
+        customerAddress
+            .TypeName.Should()
+            .NotBe("Address", "the inline object is not the component");
+        schema
+            .Types.Single(t => t.Name == customerAddress.TypeName)
+            .Fields.Select(f => f.Name)
+            .Should()
+            .BeEquivalentTo(["Line1"]);
+    }
+
+    [Test]
+    public void OpenApi_inline_enums_of_one_name_with_different_values_are_not_merged()
+    {
+        var schema = new OpenApiSchemaParser().Parse(FixturePath("inline-name-reuse.json"));
+
+        var customerStatus = FieldType(schema, "Customer", "Status");
+        var ticketStatus = FieldType(schema, "Ticket", "Status");
+
+        customerStatus
+            .Should()
+            .NotBe(ticketStatus, "two enums with different values are two enums; " + Adr);
+        schema
+            .Enums.Single(e => e.Name == customerStatus)
+            .Values.Should()
+            .Equal("Active", "Suspended");
+        schema.Enums.Single(e => e.Name == ticketStatus).Values.Should().Equal("Open", "Closed");
+    }
+
+    private static string FieldType(ApiSchema schema, string type, string field) =>
+        schema.Types.Single(t => t.Name == type).Fields.Single(f => f.Name == field).TypeName;
+
+    private static ApiOperation Operation(string name, string group) =>
+        new()
+        {
+            Name = name,
+            Kind = Trax.Cli.Models.OperationKind.Query,
+            Group = group,
+            InputType = new ApiType { Name = $"{name}Input" },
+            OutputType = new ApiType { Name = "Unit", IsBuiltIn = true },
+        };
+
+    [Test]
     public void Every_invalid_name_is_reported_at_once()
     {
         var schema = SchemaWithFieldType("Bad;");

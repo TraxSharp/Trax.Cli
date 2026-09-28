@@ -14,8 +14,14 @@ public class OpenApiSchemaParser : ISchemaParser
 
     private readonly Dictionary<string, ApiType> _resolvedTypes = new();
     private readonly Dictionary<string, ApiEnum> _resolvedEnums = new();
-    private readonly HashSet<string> _usedTypeNames = new();
-    private readonly HashSet<string> _usedOperationNames = new();
+
+    // Names the parser invents (promoted inline objects and enums) are made unique against these, and
+    // component names are claimed up front, so an invented name never takes a component's. Ignoring
+    // case, since each becomes a file name. Schema names themselves are never renamed: two that
+    // collide are both kept and SchemaNames.Validate refuses them.
+    private readonly HashSet<string> _usedTypeNames = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _componentNames = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _usedOperationNames = new(StringComparer.OrdinalIgnoreCase);
 
     public ApiSchema Parse(string filePath)
     {
@@ -44,16 +50,33 @@ public class OpenApiSchemaParser : ISchemaParser
         // Collect component schemas first
         if (document.Components?.Schemas != null)
         {
+            foreach (var rawName in document.Components.Schemas.Keys)
+            {
+                var pascal = ComponentName(rawName);
+                _componentNames.Add(pascal);
+                _usedTypeNames.Add(pascal);
+            }
+
+            var componentSources = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             foreach (var (rawName, componentSchema) in document.Components.Schemas)
             {
                 var name = NamingConventions.SimplifySchemaName(rawName);
+
+                // A second component with the same C# name (Billing.Dto and Shipping.Dto, or Status
+                // and status) would resolve to the first. Keep it as its own definition so the
+                // refusal can name both; the generator never gets that far.
+                if (!componentSources.TryAdd(ComponentName(rawName), rawName))
+                {
+                    AddCollidingComponent(schema, ComponentName(rawName), rawName, componentSchema);
+                    continue;
+                }
                 if (
                     componentSchema.Enum != null
                     && componentSchema.Enum.Count > 0
                     && componentSchema.Type == "string"
                 )
                 {
-                    var apiEnum = ResolveEnum(name, componentSchema);
+                    var apiEnum = ResolveEnum(name, componentSchema, rawName);
                     if (!schema.Enums.Any(e => e.Name == apiEnum.Name))
                         schema.Enums.Add(apiEnum);
                 }
@@ -78,6 +101,7 @@ public class OpenApiSchemaParser : ISchemaParser
                             },
                         ],
                         IsBuiltIn = false,
+                        SourceName = rawName,
                     };
                     _resolvedTypes[pascalName] = apiType;
                     if (!schema.Types.Any(t => t.Name == apiType.Name))
@@ -85,7 +109,7 @@ public class OpenApiSchemaParser : ISchemaParser
                 }
                 else
                 {
-                    var apiType = ResolveSchemaType(name, componentSchema);
+                    var apiType = ResolveSchemaType(name, componentSchema, rawName);
                     if (!apiType.IsBuiltIn && !schema.Types.Any(t => t.Name == apiType.Name))
                         schema.Types.Add(apiType);
                 }
@@ -186,6 +210,29 @@ public class OpenApiSchemaParser : ISchemaParser
         }
 
         return schema;
+    }
+
+    private static string ComponentName(string rawName) =>
+        NamingConventions.ToPascalCase(NamingConventions.SimplifySchemaName(rawName));
+
+    private static void AddCollidingComponent(
+        ApiSchema schema,
+        string name,
+        string rawName,
+        OpenApiSchema componentSchema
+    )
+    {
+        if (componentSchema.Enum is { Count: > 0 } && componentSchema.Type == "string")
+            schema.Enums.Add(
+                new ApiEnum
+                {
+                    Name = name,
+                    Values = [],
+                    SourceName = rawName,
+                }
+            );
+        else
+            schema.Types.Add(new ApiType { Name = name, SourceName = rawName });
     }
 
     /// <summary>
@@ -481,11 +528,10 @@ public class OpenApiSchemaParser : ISchemaParser
         // Enum
         if (schema.Enum is { Count: > 0 } && schema.Type == "string")
         {
-            var enumName = NamingConventions.ToPascalCase(
-                schema.Title ?? contextName ?? "UnnamedEnum"
+            return ResolveInlineEnum(
+                NamingConventions.ToPascalCase(schema.Title ?? contextName ?? "UnnamedEnum"),
+                schema
             );
-            ResolveEnum(enumName, schema);
-            return enumName;
         }
 
         // allOf — merge properties
@@ -547,7 +593,39 @@ public class OpenApiSchemaParser : ISchemaParser
         };
     }
 
-    private ApiEnum ResolveEnum(string name, OpenApiSchema schema)
+    /// <summary>
+    /// An inline enum is named after its property (or its title), which many schemas repeat with
+    /// different values (<c>status</c> on an order and on a ticket). One with the same values reuses
+    /// the enum; one with different values, or whose name a component claims, gets a numbered name.
+    /// </summary>
+    private string ResolveInlineEnum(string baseName, OpenApiSchema schema)
+    {
+        var values = EnumValues(schema);
+        for (var n = 1; ; n++)
+        {
+            var candidate = n == 1 ? baseName : $"{baseName}{n}";
+            if (
+                _resolvedEnums.TryGetValue(candidate, out var existing)
+                && !_componentNames.Contains(candidate)
+            )
+            {
+                if (existing.Values.SequenceEqual(values, StringComparer.Ordinal))
+                    return existing.Name;
+            }
+            else if (_usedTypeNames.Add(candidate))
+            {
+                return ResolveEnum(candidate, schema).Name;
+            }
+        }
+    }
+
+    private static List<string> EnumValues(OpenApiSchema schema) =>
+        schema
+            .Enum.Select(e => e is Microsoft.OpenApi.Any.OpenApiString s ? s.Value : e.ToString()!)
+            .Select(v => NamingConventions.ToPascalCase(v))
+            .ToList();
+
+    private ApiEnum ResolveEnum(string name, OpenApiSchema schema, string? sourceName = null)
     {
         var pascalName = NamingConventions.ToPascalCase(name);
 
@@ -557,20 +635,16 @@ public class OpenApiSchemaParser : ISchemaParser
         var apiEnum = new ApiEnum
         {
             Name = pascalName,
-            Values = schema
-                .Enum.Select(e =>
-                    e is Microsoft.OpenApi.Any.OpenApiString s ? s.Value : e.ToString()!
-                )
-                .Select(v => NamingConventions.ToPascalCase(v))
-                .ToList(),
+            Values = EnumValues(schema),
             Description = schema.Description,
+            SourceName = sourceName,
         };
 
         _resolvedEnums[pascalName] = apiEnum;
         return apiEnum;
     }
 
-    private ApiType ResolveSchemaType(string name, OpenApiSchema schema)
+    private ApiType ResolveSchemaType(string name, OpenApiSchema schema, string? sourceName = null)
     {
         var pascalName = NamingConventions.ToPascalCase(name);
 
@@ -625,6 +699,7 @@ public class OpenApiSchemaParser : ISchemaParser
             Name = pascalName,
             Fields = fields,
             IsBuiltIn = false,
+            SourceName = sourceName,
         };
 
         _resolvedTypes[pascalName] = apiType;
