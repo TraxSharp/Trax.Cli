@@ -304,7 +304,8 @@ public class OpenApiSchemaParser : ISchemaParser
         OpenApiPathItem pathItem
     )
     {
-        var fields = new List<ApiField>();
+        // Each field with the name the schema gave it, so converging names can be told apart.
+        var fields = new List<(ApiField Field, string Raw)>();
 
         // Path and query parameters (from both path item and operation)
         var allParams = (pathItem.Parameters ?? [])
@@ -314,14 +315,17 @@ public class OpenApiSchemaParser : ISchemaParser
         foreach (var param in allParams)
         {
             fields.Add(
-                new ApiField
-                {
-                    Name = NamingConventions.ToPascalCase(param.Name),
-                    TypeName = ResolveOpenApiType(param.Schema, param.Name),
-                    IsRequired = param.Required,
-                    IsNullable = !param.Required,
-                    Description = param.Description,
-                }
+                (
+                    new ApiField
+                    {
+                        Name = NamingConventions.ToPascalCase(param.Name),
+                        TypeName = ResolveOpenApiType(param.Schema, param.Name),
+                        IsRequired = param.Required,
+                        IsNullable = !param.Required,
+                        Description = param.Description,
+                    },
+                    param.Name
+                )
             );
         }
 
@@ -342,14 +346,17 @@ public class OpenApiSchemaParser : ISchemaParser
                     foreach (var (propName, propSchema) in bodySchema.Properties)
                     {
                         fields.Add(
-                            new ApiField
-                            {
-                                Name = NamingConventions.ToPascalCase(propName),
-                                TypeName = ResolveOpenApiType(propSchema, propName),
-                                IsRequired = requiredProps.Contains(propName),
-                                IsNullable = !requiredProps.Contains(propName),
-                                Description = propSchema.Description,
-                            }
+                            (
+                                new ApiField
+                                {
+                                    Name = NamingConventions.ToPascalCase(propName),
+                                    TypeName = ResolveOpenApiType(propSchema, propName),
+                                    IsRequired = requiredProps.Contains(propName),
+                                    IsNullable = !requiredProps.Contains(propName),
+                                    Description = propSchema.Description,
+                                },
+                                propName
+                            )
                         );
                     }
                 }
@@ -360,20 +367,42 @@ public class OpenApiSchemaParser : ISchemaParser
                         NamingConventions.SimplifySchemaName(bodySchema.Reference.Id),
                         bodySchema
                     );
-                    fields.AddRange(refType.Fields);
+                    var rawNames = RawPropertyNames(bodySchema);
+                    fields.AddRange(
+                        refType.Fields.Select(f => (f, rawNames.GetValueOrDefault(f.Name, f.Name)))
+                    );
                 }
             }
         }
 
-        // Deduplicate fields by name (different raw names can converge after PascalCase)
-        fields = fields.DistinctBy(f => f.Name).ToList();
+        // A path parameter the body repeats (PUT /players/{id} with an id in the body) is one value,
+        // kept once. Two different schema names that convert to one (update_value and updateValue)
+        // are both kept, so SchemaNames.Validate refuses them rather than one vanishing (cli/0002).
+        var inputFields = fields
+            .DistinctBy(f => (f.Field.Name, f.Raw))
+            .Select(f => f.Field)
+            .ToList();
 
         return new ApiType
         {
             Name = $"{operationName}Input",
-            Fields = fields,
+            Fields = inputFields,
             IsBuiltIn = false,
         };
+    }
+
+    /// <summary>The PascalCase field name of each property a schema declares, mapped to the name it
+    /// was declared with, allOf members included.</summary>
+    private static Dictionary<string, string> RawPropertyNames(OpenApiSchema schema)
+    {
+        var names = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (
+            var raw in (schema.Properties?.Keys ?? []).Concat(
+                schema.AllOf?.SelectMany(a => a.Properties?.Keys ?? []) ?? []
+            )
+        )
+            names.TryAdd(NamingConventions.ToPascalCase(raw), raw);
+        return names;
     }
 
     private ApiType BuildOutputType(string operationName, OpenApiOperation operation)

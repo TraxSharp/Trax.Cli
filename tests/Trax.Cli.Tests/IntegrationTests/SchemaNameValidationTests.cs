@@ -319,6 +319,35 @@ public class SchemaNameValidationTests
     private static string FieldType(ApiSchema schema, string type, string field) =>
         schema.Types.Single(t => t.Name == type).Fields.Single(f => f.Name == field).TypeName;
 
+    [Test]
+    public void OpenApi_parameters_that_become_one_input_property_are_refused()
+    {
+        // update_value (path) and updateValue (query) both become UpdateValue. The parser used to
+        // keep the first and drop the second without a word.
+        var schema = new OpenApiSchemaParser().Parse(
+            InvalidFixturePath("converging-input-names.json")
+        );
+
+        var act = () => SchemaNames.Validate(schema, "Api");
+
+        act.Should()
+            .Throw<InvalidOperationException>()
+            .WithMessage("*property of 'UpdateItemInput' 'UpdateValue'*more than once*", Adr);
+    }
+
+    [Test]
+    public void An_OpenApi_path_parameter_repeated_in_the_body_is_one_input_property()
+    {
+        // PUT /players/{id} with a body that also carries id: the same name for the same value.
+        var schema = new OpenApiSchemaParser().Parse(
+            InvalidFixturePath("converging-input-names.json")
+        );
+
+        var input = schema.Operations.Single(o => o.Name == "ReplacePlayer").InputType;
+
+        input.Fields.Select(f => f.Name).Should().Equal(["Id", "Name"], Adr);
+    }
+
     private static ApiOperation Operation(string name, string group) =>
         new()
         {

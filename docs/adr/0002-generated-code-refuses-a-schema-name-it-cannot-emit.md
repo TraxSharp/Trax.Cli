@@ -13,7 +13,10 @@ name. After the PascalCase conversion it already applies, each one must match
 offending name listed, before anything is written or `--force` deletes anything. The same
 holds when two names in one type or one enum convert to the same identifier (`first-name` and
 `firstName` both become `FirstName`): the schema is refused rather than one of them renamed or
-dropped, since either rewrites the contract the same way. It holds across definitions too:
+dropped, since either rewrites the contract the same way. That includes an OpenAPI operation's
+input, where parameters and body properties meet: `update_value` and `updateValue` are refused,
+while a path parameter the body repeats under the same name (`id` in both) is one value and
+kept once. It holds across definitions too:
 two types or enums (`Billing.Dto` and `Shipping.Dto` both become `Dto`), two operations, or two
 groups that become one name are refused, naming every definition involved, and so are names
 that differ only in case, because each becomes a file or folder and those are one path on
@@ -67,6 +70,7 @@ Not covered: nothing checks that a new template renders schema text through
 
 ## Changelog
 
+- **2026-09-28**: An operation's converging parameter and body names are refused, not dropped.
 - **2026-09-27**: Extended to distinct definitions (types, enums, operations, groups) that
   collide after conversion or differ only in case; invented inline names are numbered.
 - **2026-09-27**: Extended to names that collide after the PascalCase conversion.
