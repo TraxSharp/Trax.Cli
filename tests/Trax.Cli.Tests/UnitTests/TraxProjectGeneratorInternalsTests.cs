@@ -137,4 +137,20 @@ public class TraxProjectGeneratorInternalsTests
 
         act.Should().Throw<InvalidOperationException>().WithMessage("*--force*");
     }
+
+    [Test]
+    public void DotnetNewFailure_WhenTheTemplateIsMissing_NamesThePackageThatShipsIt()
+    {
+        var message = TraxProjectGenerator.DotnetNewFailure(
+            103,
+            "No templates or subcommands found matching: 'trax-hub'."
+        );
+
+        message
+            .Should()
+            .Contain(
+                "dotnet new install Trax.Samples.Templates",
+                "Trax.Samples is not a package on nuget.org; the templates ship in Trax.Samples.Templates"
+            );
+    }
 }
