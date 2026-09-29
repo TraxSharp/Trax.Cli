@@ -324,16 +324,14 @@ public class TraxProjectGenerator
         );
 
         if (exitCode != 0)
-        {
-            var message = stderr.Contains(
-                "No templates or subcommands found",
-                StringComparison.Ordinal
-            )
-                ? "The 'trax-hub' template is not installed. Run: dotnet new install Trax.Samples"
-                : $"dotnet new failed (exit code {exitCode}): {stderr}";
-            throw new InvalidOperationException(message);
-        }
+            throw new InvalidOperationException(DotnetNewFailure(exitCode, stderr));
     }
+
+    /// <summary>The message for a failed <c>dotnet new trax-hub</c>.</summary>
+    internal static string DotnetNewFailure(int exitCode, string stderr) =>
+        stderr.Contains("No templates or subcommands found", StringComparison.Ordinal)
+            ? "The 'trax-hub' template is not installed. Run: dotnet new install Trax.Samples.Templates"
+            : $"dotnet new failed (exit code {exitCode}): {stderr}";
 
     public static bool IsDotnetAvailable()
     {

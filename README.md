@@ -41,10 +41,10 @@ Supports two schema formats:
 
 ## Prerequisites
 
-The `trax-hub` template must be installed:
+The `trax-hub` template must be installed. It ships in the `Trax.Samples.Templates` package:
 
 ```bash
-dotnet new install Trax.Samples
+dotnet new install Trax.Samples.Templates
 ```
 
 ## Installation
