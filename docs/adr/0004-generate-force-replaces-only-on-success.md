@@ -11,7 +11,8 @@ place only after every step (`dotnet new trax-hub`, the trains library, the proj
 the `Program.cs` patch) has succeeded. With `--force` the existing directory is swapped out at
 that point, not before, so a failed run leaves it exactly as it was. `--force` is refused
 outright when the output is the current directory or one of its parents, or holds a `.git`
-directory or file.
+directory or file at any depth: a directory of side-by-side repositories is refused just as a
+repository is.
 
 ## Status
 
@@ -45,8 +46,9 @@ name that says what they are.
 
 - `GenerateForceTests` pins it: a failing scaffold leaves the existing directory and its files,
   leaves no staging directory behind, and creates nothing when the output did not exist; a
-  successful run replaces the directory; `.git` (as a directory or a worktree's file), the
-  current directory and its parents are refused before any work.
+  successful run replaces the directory; `.git` (as a directory or a worktree's file, in the
+  output or in any directory below it), the current directory and its parents are refused
+  before any work.
 - [CLI](/docs/reference/cli#options) states what `--force` does.
 
 Not covered: the rollback after a failed second rename is not exercised, because no test can
@@ -54,4 +56,5 @@ make a same-volume rename fail on demand.
 
 ## Changelog
 
+- **2026-09-29**: A `.git` below the output is refused too, not only one in it.
 - **2026-09-27**: Recorded.

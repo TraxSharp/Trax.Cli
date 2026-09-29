@@ -95,7 +95,7 @@ public class TraxProjectGenerator
 
     /// <summary>
     /// Refuses a <c>--force</c> target that replacing would do real damage to: the current directory or one of
-    /// its parents (<c>--output .</c>), and any directory holding a git repository or worktree.
+    /// its parents (<c>--output .</c>), and any directory holding a git repository or worktree, at any depth.
     /// </summary>
     internal static void EnsureReplaceable(string outputDir, string currentDirectory)
     {
@@ -116,13 +116,30 @@ public class TraxProjectGenerator
                     + "Choose a new output directory."
             );
 
-        var git = Path.Combine(target, ".git");
-        if (Directory.Exists(git) || File.Exists(git))
+        if (ContainsGitRepository(target))
             throw new InvalidOperationException(
-                $"Refusing to replace {outputDir}: it holds a git repository (.git). "
+                $"Refusing to replace {outputDir}: it holds a git repository (.git) at some depth. "
                     + "Choose a new output directory."
             );
     }
+
+    // A .git directory or a worktree's .git file, in the target itself or anywhere below it. Dot-files carry the
+    // Hidden attribute on Unix, which the default enumeration skips, so nothing is skipped except symlinks: they
+    // are not followed, and deleting the directory removes a link, not what it points at.
+    private static bool ContainsGitRepository(string target) =>
+        Directory
+            .EnumerateFileSystemEntries(
+                target,
+                ".git",
+                new EnumerationOptions
+                {
+                    RecurseSubdirectories = true,
+                    IgnoreInaccessible = true,
+                    AttributesToSkip = FileAttributes.ReparsePoint,
+                    MatchCasing = MatchCasing.CaseSensitive,
+                }
+            )
+            .Any();
 
     private static string TrimSeparators(string path) =>
         path.Length > 1

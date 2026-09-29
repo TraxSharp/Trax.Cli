@@ -14,21 +14,21 @@ offending name listed, before anything is written or `--force` deletes anything.
 holds when two names in one type or one enum convert to the same identifier (`first-name` and
 `firstName` both become `FirstName`): the schema is refused rather than one of them renamed or
 dropped, since either rewrites the contract the same way. That includes an OpenAPI operation's
-input, where parameters and body properties meet: `update_value` and `updateValue` are refused,
-while a path parameter the body repeats under the same name (`id` in both) is one value and
-kept once. It holds across definitions too:
-two types or enums (`Billing.Dto` and `Shipping.Dto` both become `Dto`), two operations, or two
-groups that become one name are refused, naming every definition involved, and so are names
-that differ only in case, because each becomes a file or folder and those are one path on
-macOS and Windows. Names the generator invents rather than reads (an inline object or enum
-named after its property) are not schema names: they are numbered to stay clear of the
-schema's names and of each other. Five type names are reserved and refused for a model: `Unit`, `Guid`, `DateTime`, `DateOnly` and `Uri`,
+input, where parameters and body properties meet: `update_value` and `updateValue` are
+refused, while a path parameter the body repeats under the same name (`id` in both) is one
+value and kept once. It holds across definitions too: two types or enums (`Billing.Dto` and
+`Shipping.Dto` both become `Dto`), two operations, or two groups that become one name are
+refused, naming every definition involved, and so are names that differ only in case, because
+each becomes a file or folder and those are one path on macOS and Windows. Names the generator
+invents rather than reads (an inline object or enum named after its property) are not schema
+names: they are numbered to stay clear of the schema's names and of each other. Five type
+names are reserved and refused for a model: `Unit`, `Guid`, `DateTime`, `DateOnly` and `Uri`,
 which the parsers write for the framework type, so a model of that name would silently take
 its place. Any other name is safe, including `Task` or `File`: generated code refers to
 framework types and to models fully qualified (`global::`), never through a using directive
-that could make them ambiguous. Free text
-(descriptions, HTTP paths) is never refused: it is collapsed to one line and escaped for where
-it lands, a `///` comment, a `//` comment or a string literal.
+that could make them ambiguous. Free text (descriptions, HTTP paths) is never refused: it is
+collapsed to one line and escaped for where it lands, a `///` comment, a `//` comment or a
+string literal.
 
 ## Status
 
