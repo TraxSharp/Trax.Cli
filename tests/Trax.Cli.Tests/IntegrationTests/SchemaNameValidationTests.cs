@@ -147,6 +147,50 @@ public class SchemaNameValidationTests
     }
 
     [Test]
+    public void OpenApi_properties_that_become_one_name_after_PascalCase_are_refused()
+    {
+        var schema = new OpenApiSchemaParser().Parse(
+            InvalidFixturePath("duplicate-property-names.json")
+        );
+
+        var act = () => new TraxProjectGenerator().GenerateTrainsLibrary(schema, _outputDir, "Api");
+
+        act.Should()
+            .Throw<InvalidOperationException>()
+            .WithMessage("*property of 'Person' 'FirstName'*more than once*", Adr);
+        Directory.Exists(_root).Should().BeFalse("nothing is written for a refused schema; " + Adr);
+    }
+
+    [Test]
+    public void OpenApi_enum_values_that_become_one_name_after_PascalCase_are_refused()
+    {
+        var schema = new OpenApiSchemaParser().Parse(
+            InvalidFixturePath("duplicate-property-names.json")
+        );
+
+        var act = () => SchemaNames.Validate(schema, "Api");
+
+        act.Should()
+            .Throw<InvalidOperationException>()
+            .WithMessage("*enum value of 'Status' 'InProgress'*more than once*", Adr);
+    }
+
+    [Test]
+    public void GraphQL_fields_that_become_one_name_after_PascalCase_are_refused()
+    {
+        var schema = new GraphQLSchemaParser().Parse(
+            InvalidFixturePath("duplicate-field-names.graphql")
+        );
+
+        var act = () => new TraxProjectGenerator().GenerateTrainsLibrary(schema, _outputDir, "Api");
+
+        act.Should()
+            .Throw<InvalidOperationException>()
+            .WithMessage("*property of 'Player' 'FirstName'*more than once*", Adr);
+        Directory.Exists(_root).Should().BeFalse(Adr);
+    }
+
+    [Test]
     public void Every_invalid_name_is_reported_at_once()
     {
         var schema = SchemaWithFieldType("Bad;");

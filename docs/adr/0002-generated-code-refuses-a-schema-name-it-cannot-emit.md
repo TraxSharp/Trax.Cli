@@ -10,7 +10,10 @@ status: accepted
 operations, groups, the project name) into a C# identifier, a namespace segment or a file
 name. After the PascalCase conversion it already applies, each one must match
 `[A-Za-z_][A-Za-z0-9_]*`, and a schema with any that does not is refused as a whole, every
-offending name listed, before anything is written or `--force` deletes anything. Free text
+offending name listed, before anything is written or `--force` deletes anything. The same
+holds when two names in one type or one enum convert to the same identifier (`first-name` and
+`firstName` both become `FirstName`): the schema is refused rather than one of them renamed or
+dropped, since either rewrites the contract the same way. Free text
 (descriptions, HTTP paths) is never refused: it is collapsed to one line and escaped for where
 it lands, a `///` comment, a `//` comment or a string literal.
 
@@ -44,8 +47,9 @@ that uses them has to rename them before it can be generated.
 
 - `SchemaNameValidationTests` pins the refusal: an OpenAPI property name and a tag that are not
   identifiers are refused before anything is written, `--force` deletes nothing for a refused
-  schema, and a GraphQL schema whose descriptions contain code generates a library that
-  compiles and declares only the schema's types.
+  schema, properties or enum values that convert to one name are refused, and a GraphQL
+  schema whose descriptions contain code generates a library that compiles and declares only
+  the schema's types.
 - `SchemaTextRenderingTests` pins the escaping of free text for each place it lands.
 - [CLI](/docs/reference/cli#names-and-descriptions) is the rule this produces.
 
@@ -54,4 +58,5 @@ Not covered: nothing checks that a new template renders schema text through
 
 ## Changelog
 
+- **2026-09-27**: Extended to names that collide after the PascalCase conversion.
 - **2026-09-27**: Recorded.
