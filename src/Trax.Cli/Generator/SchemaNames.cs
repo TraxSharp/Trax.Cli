@@ -47,14 +47,32 @@ internal static partial class SchemaNames
             CheckType(operation.OutputType, $"output type of '{operation.Name}'", problems);
         }
 
+        CheckDistinct(ModelSources(schema), "type or enum", problems);
+        CheckDistinct(
+            schema.Operations.Select(o => (o.Name, o.SourceName ?? o.Name)),
+            "operation",
+            problems
+        );
+        CheckDistinct(
+            schema
+                .Operations.Select(o => o.Group)
+                .OfType<string>()
+                .Distinct(StringComparer.Ordinal)
+                .Select(g => (g, g)),
+            "group",
+            problems
+        );
+
         if (problems.Count == 0)
             return;
 
         throw new InvalidOperationException(
             "The schema has names that cannot be used in generated C#. Every name has to match "
                 + Pattern
-                + " (after the generator's PascalCase conversion), and no two names in one type or"
-                + " enum may convert to the same one; rename these in the schema:"
+                + " (after the generator's PascalCase conversion), and no two may convert to the same"
+                + " one where they share a scope: the properties of a type, the values of an enum,"
+                + " and, ignoring case because each becomes a file or folder name, the types and enums,"
+                + " the operations, and the groups. Rename these in the schema:"
                 + Environment.NewLine
                 + string.Join(
                     Environment.NewLine,
@@ -91,6 +109,50 @@ internal static partial class SchemaNames
                 .Select(g => g.Key)
         )
             problems.Add($"{kind} '{name}' (more than once after the PascalCase conversion)");
+    }
+
+    /// <summary>
+    /// Every type and enum written to <c>Models/</c>, each a distinct schema definition. The parsers
+    /// share one instance between the places a type is used, so the same instance twice is one type.
+    /// </summary>
+    private static IEnumerable<(string Name, string Source)> ModelSources(ApiSchema schema) =>
+        schema
+            .Types.Where(t => !t.IsBuiltIn)
+            .Distinct(ReferenceEqualityComparer.Instance)
+            .Cast<ApiType>()
+            .Select(t => (t.Name, t.SourceName ?? t.Name))
+            .Concat(
+                schema
+                    .Enums.Distinct(ReferenceEqualityComparer.Instance)
+                    .Cast<ApiEnum>()
+                    .Select(e => (e.Name, e.SourceName ?? e.Name))
+            );
+
+    /// <summary>
+    /// Distinct schema definitions that become one C# name, or names differing only in case, which
+    /// are one file or folder on a case-insensitive file system. Each would silently merge with or
+    /// overwrite the other, so the schema is refused, naming every definition involved.
+    /// </summary>
+    private static void CheckDistinct(
+        IEnumerable<(string Name, string Source)> definitions,
+        string kind,
+        List<string> problems
+    )
+    {
+        foreach (
+            var group in definitions
+                .GroupBy(d => d.Name, StringComparer.OrdinalIgnoreCase)
+                .Where(g => g.Count() > 1)
+        )
+            problems.Add(
+                $"{kind} '{group.Key}' comes from more than one definition: "
+                    + string.Join(
+                        ", ",
+                        group.Select(d =>
+                            d.Source == d.Name ? $"'{d.Source}'" : $"'{d.Source}' (as '{d.Name}')"
+                        )
+                    )
+            );
     }
 
     private static void Check(string name, string kind, List<string> problems)
