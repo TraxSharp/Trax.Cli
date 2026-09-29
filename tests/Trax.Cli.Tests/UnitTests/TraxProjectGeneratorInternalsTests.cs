@@ -55,19 +55,7 @@ public class TraxProjectGeneratorInternalsTests
     }
 
     [Test]
-    public void PatchProgramCs_NoProgramFile_NoOp()
-    {
-        var hubDir = Path.Combine(_tempDir, "EmptyHub");
-        Directory.CreateDirectory(hubDir);
-
-        Action act = () => TraxProjectGenerator.PatchProgramCs(hubDir, "MyApi");
-
-        act.Should().NotThrow();
-        Directory.GetFiles(hubDir).Should().BeEmpty();
-    }
-
-    [Test]
-    public void PatchProgramCs_RewritesAssemblyScanAndAddsUsing()
+    public void PatchProgramCs_RewritesAssemblyScanWithoutAUsing()
     {
         var hubDir = Path.Combine(_tempDir, "Hub");
         Directory.CreateDirectory(hubDir);
@@ -91,7 +79,7 @@ public class TraxProjectGeneratorInternalsTests
         updated
             .Should()
             .Contain("typeof(Program).Assembly, typeof(MyApi.Trains.ManifestNames).Assembly");
-        updated.Should().Contain("using MyApi.Trains;");
+        updated.Should().NotContain("using MyApi.Trains;");
     }
 
     [Test]

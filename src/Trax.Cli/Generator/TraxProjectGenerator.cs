@@ -272,34 +272,35 @@ public class TraxProjectGenerator
         File.WriteAllText(csprojPath, content);
     }
 
+    /// <summary>
+    /// Adds the trains assembly to the hub's <c>AddMediator(typeof(Program).Assembly)</c> scan. The name is
+    /// written fully qualified, so no using directive is inserted: finding where one may go needs a parse, and
+    /// the template's last <c>using</c> is a statement inside a block. A template that no longer has the scan
+    /// is refused, since the hub would otherwise build and register none of the generated trains.
+    /// </summary>
     internal static void PatchProgramCs(string hubDir, string projectName)
     {
+        const string scan = "typeof(Program).Assembly";
         var programPath = Path.Combine(hubDir, "Program.cs");
         if (!File.Exists(programPath))
-            return;
+            throw new InvalidOperationException(
+                $"The hub template produced no Program.cs at {programPath}, so the generated trains cannot be "
+                    + "registered. The installed trax-hub template does not match this version of trax."
+            );
 
         var content = File.ReadAllText(programPath);
+        if (!content.Contains(scan, StringComparison.Ordinal))
+            throw new InvalidOperationException(
+                $"The hub's Program.cs ({programPath}) has no '{scan}' to add the trains assembly to, so the "
+                    + "generated trains would not be registered. The installed trax-hub template does not match "
+                    + "this version of trax."
+            );
 
-        // Add the trains assembly alongside Program's assembly so both get scanned
         content = content.Replace(
-            "typeof(Program).Assembly",
-            $"typeof(Program).Assembly, typeof({projectName}.Trains.ManifestNames).Assembly"
+            scan,
+            $"{scan}, typeof({projectName}.Trains.ManifestNames).Assembly",
+            StringComparison.Ordinal
         );
-
-        // Add using for the trains namespace if not already present
-        var trainsUsing = $"using {projectName}.Trains;";
-        if (!content.Contains(trainsUsing))
-        {
-            var lastUsingIndex = content.LastIndexOf("using ", StringComparison.Ordinal);
-            if (lastUsingIndex >= 0)
-            {
-                var endOfLine = content.IndexOf('\n', lastUsingIndex);
-                if (endOfLine >= 0)
-                {
-                    content = content.Insert(endOfLine + 1, trainsUsing + "\n");
-                }
-            }
-        }
 
         File.WriteAllText(programPath, content);
     }
