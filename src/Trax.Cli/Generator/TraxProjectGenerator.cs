@@ -6,27 +6,80 @@ namespace Trax.Cli.Generator;
 public class TraxProjectGenerator
 {
     private readonly CodeRenderer _renderer = new();
+    private readonly Action<string, string> _scaffoldHub;
+
+    public TraxProjectGenerator()
+        : this(RunDotnetNew) { }
+
+    /// <summary>Takes the step that scaffolds the hub (name, directory), so a test can make it fail.</summary>
+    internal TraxProjectGenerator(Action<string, string> scaffoldHub) => _scaffoldHub = scaffoldHub;
 
     public void Generate(ApiSchema schema, string outputDir, string projectName, bool force)
     {
         // Before the output directory is touched, so a refused schema deletes nothing.
         SchemaNames.Validate(schema, projectName);
 
-        if (Directory.Exists(outputDir))
+        outputDir = Path.GetFullPath(outputDir);
+        var replacing = Directory.Exists(outputDir);
+        if (replacing)
         {
             if (!force)
                 throw new InvalidOperationException(
                     $"Output directory already exists: {outputDir}. Use --force to overwrite."
                 );
-            Directory.Delete(outputDir, recursive: true);
+            EnsureReplaceable(outputDir, Directory.GetCurrentDirectory());
         }
 
-        Directory.CreateDirectory(outputDir);
+        // Build the project in a sibling directory and swap it in only when every step has succeeded, so a
+        // failure (most often `dotnet new`) leaves the existing directory as it was. A sibling keeps the swap
+        // a rename on one volume.
+        var parent = Path.GetDirectoryName(outputDir)!;
+        Directory.CreateDirectory(parent);
+        var staging = Path.Combine(
+            parent,
+            $".{Path.GetFileName(outputDir)}.trax-generate-{Guid.NewGuid():N}"
+        );
+        try
+        {
+            Directory.CreateDirectory(staging);
+            GenerateInto(schema, staging, projectName);
+        }
+        catch
+        {
+            TryDeleteDirectory(staging);
+            throw;
+        }
 
+        if (!replacing)
+        {
+            Directory.Move(staging, outputDir);
+            return;
+        }
+
+        var previous = Path.Combine(
+            parent,
+            $".{Path.GetFileName(outputDir)}.trax-previous-{Guid.NewGuid():N}"
+        );
+        Directory.Move(outputDir, previous);
+        try
+        {
+            Directory.Move(staging, outputDir);
+        }
+        catch
+        {
+            Directory.Move(previous, outputDir);
+            TryDeleteDirectory(staging);
+            throw;
+        }
+        TryDeleteDirectory(previous);
+    }
+
+    private void GenerateInto(ApiSchema schema, string outputDir, string projectName)
+    {
         // 1. Scaffold the hub project via dotnet new
         var hubProjectName = $"{projectName}.Hub";
         var hubDir = Path.Combine(outputDir, hubProjectName);
-        RunDotnetNew(hubProjectName, hubDir);
+        _scaffoldHub(hubProjectName, hubDir);
 
         // 2. Create the trains library
         var trainsProjectName = $"{projectName}.Trains";
@@ -38,6 +91,56 @@ public class TraxProjectGenerator
 
         // 4. Patch hub Program.cs to scan the trains assembly
         PatchProgramCs(hubDir, projectName);
+    }
+
+    /// <summary>
+    /// Refuses a <c>--force</c> target that replacing would do real damage to: the current directory or one of
+    /// its parents (<c>--output .</c>), and any directory holding a git repository or worktree.
+    /// </summary>
+    internal static void EnsureReplaceable(string outputDir, string currentDirectory)
+    {
+        var target = TrimSeparators(Path.GetFullPath(outputDir));
+        var current = TrimSeparators(Path.GetFullPath(currentDirectory));
+        var comparison = OperatingSystem.IsLinux()
+            ? StringComparison.Ordinal
+            : StringComparison.OrdinalIgnoreCase;
+
+        if (
+            string.Equals(target, current, comparison)
+            || current.StartsWith(target + Path.DirectorySeparatorChar, comparison)
+            || Path.GetPathRoot(target) == target + Path.DirectorySeparatorChar
+            || Path.GetPathRoot(target) == target
+        )
+            throw new InvalidOperationException(
+                $"Refusing to replace {outputDir}: it is the current directory or one of its parents. "
+                    + "Choose a new output directory."
+            );
+
+        var git = Path.Combine(target, ".git");
+        if (Directory.Exists(git) || File.Exists(git))
+            throw new InvalidOperationException(
+                $"Refusing to replace {outputDir}: it holds a git repository (.git). "
+                    + "Choose a new output directory."
+            );
+    }
+
+    private static string TrimSeparators(string path) =>
+        path.Length > 1
+            ? path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+            : path;
+
+    private static void TryDeleteDirectory(string dir)
+    {
+        try
+        {
+            if (Directory.Exists(dir))
+                Directory.Delete(dir, recursive: true);
+        }
+        catch (IOException)
+        {
+            // Best effort: a leftover staging directory is visible, named, and harmless.
+        }
+        catch (UnauthorizedAccessException) { }
     }
 
     internal void GenerateTrainsLibrary(ApiSchema schema, string trainsDir, string projectName)
