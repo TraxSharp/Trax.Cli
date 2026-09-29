@@ -315,31 +315,22 @@ public class TraxProjectGenerator
 
     private static void RunDotnetNew(string name, string outputDir)
     {
-        var psi = new ProcessStartInfo
-        {
-            FileName = "dotnet",
-            ArgumentList = { "new", "trax-hub", "-n", name, "-o", outputDir },
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-        };
+        var (exitCode, _, stderr) = ChildProcess.Run(
+            new ProcessStartInfo
+            {
+                FileName = "dotnet",
+                ArgumentList = { "new", "trax-hub", "-n", name, "-o", outputDir },
+            }
+        );
 
-        using var process =
-            Process.Start(psi) ?? throw new InvalidOperationException("Failed to start dotnet.");
-
-        var stdout = process.StandardOutput.ReadToEnd();
-        var stderr = process.StandardError.ReadToEnd();
-        process.WaitForExit();
-
-        if (process.ExitCode != 0)
+        if (exitCode != 0)
         {
             var message = stderr.Contains(
                 "No templates or subcommands found",
                 StringComparison.Ordinal
             )
                 ? "The 'trax-hub' template is not installed. Run: dotnet new install Trax.Samples"
-                : $"dotnet new failed (exit code {process.ExitCode}): {stderr}";
+                : $"dotnet new failed (exit code {exitCode}): {stderr}";
             throw new InvalidOperationException(message);
         }
     }
