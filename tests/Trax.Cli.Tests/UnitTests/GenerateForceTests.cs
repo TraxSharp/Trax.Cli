@@ -178,6 +178,30 @@ public class GenerateForceTests
         return output;
     }
 
+    [Test]
+    public void Generate_Force_OnADirectoryWhoseSubdirectoryIsAGitRepository_IsRefused()
+    {
+        // A workspace of side-by-side repositories: the directory itself is not a repository.
+        var workspace = Path.Combine(_root, "workspace");
+        var repoGit = Path.Combine(workspace, "SomeRepo", ".git");
+        Directory.CreateDirectory(repoGit);
+        File.WriteAllText(Path.Combine(repoGit, "HEAD"), "ref: refs/heads/main\n");
+
+        var act = () =>
+            new TraxProjectGenerator(FakeScaffold).Generate(
+                Schema(),
+                workspace,
+                "Proj",
+                force: true
+            );
+
+        act.Should().Throw<InvalidOperationException>();
+        Directory
+            .Exists(repoGit)
+            .Should()
+            .BeTrue("replacing the directory deletes every repository inside it; " + Adr);
+    }
+
     private static void FailingScaffold(string name, string dir) =>
         throw new InvalidOperationException("The 'trax-hub' template is not installed.");
 
