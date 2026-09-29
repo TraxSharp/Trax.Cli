@@ -17,6 +17,17 @@ internal static partial class SchemaNames
 {
     internal const string Pattern = "[A-Za-z_][A-Za-z0-9_]*";
 
+    /// <summary>
+    /// Type names the parsers write for something other than a model: <c>Guid</c>, <c>DateTime</c>,
+    /// <c>DateOnly</c> and <c>Uri</c> for formatted strings, and <c>Unit</c> for an operation that returns
+    /// nothing. A model of one of these names would be read as that model wherever the parsers meant
+    /// the framework type, so it is refused like any other name the generator cannot emit.
+    /// </summary>
+    internal static readonly IReadOnlySet<string> Reserved = new HashSet<string>(
+        ["Unit", "Guid", "DateTime", "DateOnly", "Uri"],
+        StringComparer.Ordinal
+    );
+
     internal static bool IsIdentifier(string? name) =>
         name is not null && Identifier().IsMatch(name);
 
@@ -29,6 +40,16 @@ internal static partial class SchemaNames
 
         foreach (var type in schema.Types)
             CheckType(type, "type", problems);
+
+        foreach (
+            var name in schema
+                .Types.Where(t => !t.IsBuiltIn)
+                .Select(t => t.Name)
+                .Concat(schema.Enums.Select(e => e.Name))
+                .Where(Reserved.Contains)
+                .Distinct()
+        )
+            problems.Add($"type '{name}' (reserved for the framework type of that name)");
 
         foreach (var apiEnum in schema.Enums)
         {

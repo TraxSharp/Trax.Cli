@@ -22,7 +22,11 @@ groups that become one name are refused, naming every definition involved, and s
 that differ only in case, because each becomes a file or folder and those are one path on
 macOS and Windows. Names the generator invents rather than reads (an inline object or enum
 named after its property) are not schema names: they are numbered to stay clear of the
-schema's names and of each other. Free text
+schema's names and of each other. Five type names are reserved and refused for a model: `Unit`, `Guid`, `DateTime`, `DateOnly` and `Uri`,
+which the parsers write for the framework type, so a model of that name would silently take
+its place. Any other name is safe, including `Task` or `File`: generated code refers to
+framework types and to models fully qualified (`global::`), never through a using directive
+that could make them ambiguous. Free text
 (descriptions, HTTP paths) is never refused: it is collapsed to one line and escaped for where
 it lands, a `///` comment, a `//` comment or a string literal.
 
@@ -62,6 +66,8 @@ that uses them has to rename them before it can be generated.
   of different values, and a GraphQL
   schema whose descriptions contain code generates a library that compiles and declares only
   the schema's types.
+- `FrameworkTypeNameTests` pins the reserved names and compiles a library whose models are
+  named `Task`, `File`, `Exception` and `ILogger`.
 - `SchemaTextRenderingTests` pins the escaping of free text for each place it lands.
 - [CLI](/docs/reference/cli#names-and-descriptions) is the rule this produces.
 
@@ -70,6 +76,8 @@ Not covered: nothing checks that a new template renders schema text through
 
 ## Changelog
 
+- **2026-09-28**: Reserved five framework type names; models and framework types are referenced
+  fully qualified.
 - **2026-09-28**: An operation's converging parameter and body names are refused, not dropped.
 - **2026-09-27**: Extended to distinct definitions (types, enums, operations, groups) that
   collide after conversion or differ only in case; invented inline names are numbered.
