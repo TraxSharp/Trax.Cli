@@ -44,6 +44,11 @@ jobs:
         run: .github/scripts/check-deprecated-packages.sh Trax.Cli.slnx
       - name: Build
         run: dotnet build --configuration Release --no-restore -warnaserror
+      - name: Pack
+        # The release job packs after semantic-release has already tagged the version, so a
+        # packing failure is caught here, before a merge. Package validation does not apply:
+        # the SDK turns it off for a PackAsTool package, which ships no library API.
+        run: dotnet pack --configuration Release --no-build --output "$RUNNER_TEMP/nupkg"
       - name: Test
         run: dotnet test --configuration Release --no-build --collect:"XPlat Code Coverage" --results-directory ./TestResults
       - name: Upload coverage results
